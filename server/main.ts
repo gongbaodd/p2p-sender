@@ -20,11 +20,20 @@ router.get("/ws", ctx => {
 
   ws.onmessage = (e) => {
     console.log(e.data)
-    clients.forEach(client => {
-      if (client.readyState !== WebSocket.OPEN) return
+    const data = JSON.parse(e.data)
 
-      client.send(e.data)
-    })
+    const targetSocket = clients.values().toArray()[clients.size - 1]
+
+    if (targetSocket) {
+      targetSocket.send(JSON.stringify(data))
+    }
+
+    // broadcast
+    // clients.forEach(client => {
+    //   if (client.readyState !== WebSocket.OPEN) return
+
+    //   client.send(e.data)
+    // })
   }
 
   ws.onclose = () => {

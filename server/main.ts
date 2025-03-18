@@ -1,32 +1,53 @@
-import { Server } from "https://deno.land/x/socket_io@0.2.1/mod.ts";
 import { Application } from "jsr:@oak/oak"
+import { Router } from "jsr:@oak/oak/router"
 
-const app = new Application();
+const app = new Application()
+const router = new Router()
+const clients = new Set<WebSocket>()
 
-const io = new Server({
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-    credentials: true,
+router.get("/ws", ctx => {
+  if (!ctx.isUpgradable) {
+    ctx.throw(501)
   }
-});
 
+  const ws = ctx.upgrade()
 
-io.on("connection", (socket) => {
-  console.log(`socket ${socket.id} connected`);
+  ws.onopen = () => {
+    clients.add(ws)
+    console.log(`${clients.size} users connected`);
+    
+  }
 
-  socket.emit("hello", "world");
+  ws.onmessage = (e) => {
+    console.log(e.data)
+    clients.forEach(client => {
+      if (client.readyState !== WebSocket.OPEN) return
 
-  socket.on("disconnect", (reason) => {
-    console.log(`socket ${socket.id} disconnected due to ${reason}`);
-  });
-});
+      client.send(e.data)
+    })
+  }
 
-const handler = io.handler(async req => {
-  return await app.handle(req) || new Response(null, { status: 404 })
+  ws.onclose = () => {
+    clients.delete(ws)
+    console.log(`${clients.size} users disconnected`)
+  }
 })
 
-Deno.serve({
-  handler,
-  port: 3000,
-});
+router.get("/", ctx => {
+  ctx.response.redirect("/index.html")
+})
+
+app.use(router.routes())
+app.use(router.allowedMethods())
+app.use(async (ctx, next) => {
+  try {
+    await ctx.send({
+      root: `${Deno.cwd()}/public`,
+      index: "index.html"
+    })
+  } catch {
+    await next()
+  }
+})
+
+await app.listen({ port: 3000 })

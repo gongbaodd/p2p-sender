@@ -1,94 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
 </head>
+
 <body>
-    <input type="text" id="messageInput">
-    <button onclick="sendMessage()">Send</button>
-    <button onclick="ConnectP2P()">Connect</button>
-    <div id="messages"></div>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script>
-        const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
-        const peerConnection = new RTCPeerConnection(configuration);
-        const dataChannel = peerConnection.createDataChannel("chat");
-
-        dataChannel.onopen = () => {
-            console.log("Data channel opened")
-        }
-
-        dataChannel.onmessage = async event => {
-            console.log("Message received: ", event.data)
-        }
-
-        peerConnection.ondatachannel = event => {
-            event.chanel.onmessage = e => {
-                console.log("Received: ", e.data)
-            }
-        }
-
-        const ws = new WebSocket('ws://localhost:3000/ws')
-        const messageDiv = document.getElementById("messages")
-
-        ws.onmessage = async event => {
-            // const message = document.createElement("div")
-            // message.textContent = event.data
-            // messageDiv.appendChild(message)
-
-            const data = JSON.parse(event.data)
-            if ("offer" === data.type) {
-                await peerConnection.setRemoteDescription(
-                    new RTCSessionDescription({
-                        type: "offer",
-                        sdp: data.sdp,
-                    })
-                )
-                const answer = await peerConnection.createAnswer()
-                await peerConnection.setLocalDescription(
-                    new RTCSessionDescription({
-                        type: "answer",
-                        adp: answer.sdp,
-                    })
-                )
-                ws.send(JSON.stringify({
-                    type: "answer",
-                    sdp: answer.sdp
-                }))
-                
-            } else if ("answer" === data.type) {
-                await peerConnection.setRemoteDescription(
-                    new RTCSessionDescription({
-                        type: "answer",
-                        sdp: data.sdp
-                    })
-                )
-            }
-        }
-
-
-
-        function sendMessage() {
-            const input = document.getElementById("messageInput")
-            ws.send(input.value)
-            input.value = ""
-        }
-
-        async function ConnectP2P() {
-           const offer = await peerConnection.createOffer()
-           const desp = await peerConnection.setLocalDescription(
-                    new RTCSessionDescription({
-                        type: "offer",
-                        sdp: offer.sdp,
-                    })
-                )
-
-            ws.send(JSON.stringify({
-                type: "offer",
-                sdp: offer.sdp,
-            }))
-        }
+        var peer = new Peer();
+        peer.on('open', function (id) {
+            console.log('My peer ID is: ' + id);
+        });
     </script>
 </body>
+
 </html>

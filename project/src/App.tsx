@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Peer, DataConnection } from 'peerjs';
 import { Share2, X, Send, Link } from 'lucide-react';
 
@@ -14,6 +14,7 @@ function App() {
   const [joinCode, setJoinCode] = useState('');
   const [peerCount, setPeerCount] = useState(1);
   const [receivedUrl, setReceivedUrl] = useState('');
+  const peerRef = useRef<Peer | null>(null);
 
   const createRoom = useCallback(async (peer: Peer) => {
     try {
@@ -24,63 +25,57 @@ function App() {
       });
       const data = await response.json();
       setRoom({ code: data.code, peer, connections: [] });
+
+      console.log('Room created:', data);
     } catch (error) {
       console.error('Failed to create room:', error);
     }
   }, []);
 
   const handleCreateRoom = useCallback(async () => {
-    const peer = new Peer({
-      host: "localhost",
-      port: 3000,
-      path: "/peer"
-    });
-    
-    peer.on('open', () => createRoom(peer));
-    
-    peer.on('connection', (conn) => {
-      conn.on('data', (data) => {
-        if (typeof data === 'string') {
-          setReceivedUrl(data);
-        }
-      });
-      setRoom(prev => prev ? {
-        ...prev,
-        connections: [...prev.connections, conn]
-      } : null);
-      setPeerCount(prev => prev + 1);
-    });
+    if (!peerRef.current) return;
+    createRoom(peerRef.current);
   }, [createRoom]);
 
   const handleJoinRoom = useCallback(async () => {
     if (!joinCode) return;
+    if (!peerRef.current) return;
 
-    const peer = new Peer();
+    const peer = peerRef.current;
     
-    peer.on('open', async (id) => {
-      try {
-        const response = await fetch('http://localhost:3000/addRoom', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: joinCode, peerId: id })
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-          const conn = peer.connect(data.connections[0]);
+    try {
+      const response = await fetch('http://localhost:3000/addRoom', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: joinCode, peerId: peer.id })
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        const conn = peer.connect(data.connections[0], { reliable: true });
+        conn.on("open", () => {
+          console.log("open")
           setRoom({ code: joinCode, peer, connections: [conn] });
           setPeerCount(data.peerCount);
-          
+
           conn.on('data', (data) => {
             if (typeof data === 'string') {
               setReceivedUrl(data);
             }
           });
-        }
-      } catch (error) {
-        console.error('Failed to join room:', error);
+        });
+
+        conn.on("data", (data) => {
+          console.log("data", data)
+        })
+
+        conn.on("close", () => {
+          console.log("close")
+        })
       }
-    });
+    } catch (error) {
+      console.error('Failed to join room:', error);
+    }
   }, [joinCode]);
 
   const handleLeaveRoom = useCallback(async () => {
@@ -119,6 +114,46 @@ function App() {
       }
     };
   }, [room]);
+
+  useEffect(() => {
+    if (peerRef.current) return;
+
+    const peer = new Peer({
+      host: "localhost",
+      port: 3000,
+      path: "/peer",
+      debug: 2
+    });
+
+    peerRef.current = peer;
+
+    peer.on('open', () => {
+      console.log(peer)
+    });
+
+    peer.on('connection', (conn) => {
+      console.log('New connection:', conn.peer);
+      conn.on('open', () => {});
+
+      conn.on('data', (data) => {
+        if (typeof data === 'string') {
+          setReceivedUrl(data);
+        }
+      });
+
+      conn.on('close', () => {});
+      
+      setRoom(prev => prev ? {
+        ...prev,
+        connections: [...prev.connections, conn]
+      } : null);
+      setPeerCount(prev => prev + 1);
+    });
+
+    peer.on("disconnected", () => {
+
+    });
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">

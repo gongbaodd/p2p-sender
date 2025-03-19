@@ -60,7 +60,7 @@ app.post('/createRoom', (req, res) => {
   idMap[code] = [peerId];
   
   logger.info(`Room created with code: ${code}`);
-  res.json({ code });
+  res.json({ code, connections: idMap[code] });
 });
 
 app.patch('/addRoom', (req, res) => {

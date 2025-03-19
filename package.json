@@ -1,0 +1,11 @@
+{
+  "name": "p2p-sender",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:gongbaodd/p2p-sender.git",
+  "author": "gong@UbuntuWSLProArt <gongaodd@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

@@ -6,7 +6,9 @@
   "author": "gong@UbuntuWSLProArt <gongaodd@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "morgan": "^1.10.0",
+    "path": "^0.12.7"
   },
   "scripts": {
     "start": "node server/app.js"

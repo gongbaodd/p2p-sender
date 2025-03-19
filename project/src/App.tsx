@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Peer } from 'peerjs';
+import { useState, useEffect, useCallback } from 'react';
+import { Peer, DataConnection } from 'peerjs';
 import { Share2, X, Send, Link } from 'lucide-react';
 
 interface Room {
   code: string;
   peer: Peer;
-  connections: any[];
+  connections: DataConnection[];
 }
 
 function App() {
@@ -30,7 +30,11 @@ function App() {
   }, []);
 
   const handleCreateRoom = useCallback(async () => {
-    const peer = new Peer();
+    const peer = new Peer({
+      host: "localhost",
+      port: 3000,
+      path: "/peer"
+    });
     
     peer.on('open', () => createRoom(peer));
     
@@ -63,7 +67,7 @@ function App() {
         const data = await response.json();
         
         if (data.success) {
-          const conn = peer.connect(Array.from(peer.connections.keys())[0]);
+          const conn = peer.connect(data.connections[0]);
           setRoom({ code: joinCode, peer, connections: [conn] });
           setPeerCount(data.peerCount);
           

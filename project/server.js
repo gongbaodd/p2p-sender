@@ -46,13 +46,18 @@ const peerServer = ExpressPeerServer(server, {
 app.use('/peer', peerServer);
 
 // Store room data
-const idMap = new Map();
+const idMap = {}//new Map();
+
+app.use((req, res, next) => {
+  next();
+  logger.info(JSON.stringify(idMap, null, 2));
+});
 
 // Routes
 app.post('/createRoom', (req, res) => {
   const { peerId } = req.body;
   const code = Math.random().toString().substring(2, 8);
-  idMap.set(code, new Set([peerId]));
+  idMap[code] = [peerId];
   
   logger.info(`Room created with code: ${code}`);
   res.json({ code });
@@ -61,28 +66,29 @@ app.post('/createRoom', (req, res) => {
 app.patch('/addRoom', (req, res) => {
   const { code, peerId } = req.body;
   
-  if (!idMap.has(code)) {
+  if (!idMap[code]) {
     logger.error(`Room not found: ${code}`);
     return res.status(404).json({ error: 'Room not found' });
   }
   
-  idMap.get(code).add(peerId);
+  idMap[code].push(peerId);
   logger.info(`Peer ${peerId} joined room ${code}`);
   res.json({ 
     success: true,
-    peerCount: idMap.get(code).size 
+    peerCount: idMap[code].length,
+    connections: idMap[code]
   });
 });
 
 app.delete('/leaveRoom', (req, res) => {
   const { code, peerId } = req.body;
   
-  if (idMap.has(code)) {
-    const peers = idMap.get(code);
+  if (idMap[code]) {
+    const peers = idMap[code];
     peers.delete(peerId);
     
     if (peers.size === 0) {
-      idMap.delete(code);
+      delete idMap[code];
       logger.info(`Room ${code} deleted`);
     }
     

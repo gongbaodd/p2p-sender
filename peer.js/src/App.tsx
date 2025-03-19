@@ -31,6 +31,7 @@ function App() {
     });
 
     newPeer.on('connection', (conn) => {
+      console.log(conn)
       handleConnection(conn);
     });
 

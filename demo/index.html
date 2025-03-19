@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>Me: <span id="peerTitle"></span></h1>
+    <h1>To: <span id="toPeer"></span></h1>
+    <div>
+        <h1>Sender</h1>
+        <input type="text" id="senderInput"/>
+        <button id="senderConnect">connect</button>
+        <input type="text" id="messageInput"/>
+        <button id="sender">send</button>
+    </div>
+    <div>
+        <h1>Receiver</h1>
+        <h2 id="receiverId"></h2>
+    </div>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script>
+        const peer = new Peer(null, { debug: 2 })
+
+        peer.on("open", id => {
+            document.getElementById("peerTitle").innerText = id
+            console.log("id: ", id)
+        })
+
+        peer.on("connection", conn => {
+            conn.on("open", () => {
+                document.getElementById("receiverId").innerText = conn.peer
+                conn.send("hello from " + conn.peer)
+            })
+
+            conn.on("data", data => {
+                console.log("received in peer.conn " + data)
+            })
+        })
+
+        peer.on("disconnected", () => {
+            console.log("disconnected")
+        })
+
+        peer.on("close", () => {
+            console.log("peer closed")
+        })
+
+        peer.on("error", err => {
+            console.log(err)
+        })
+
+
+        const senderInput = document.getElementById("senderInput")
+        const senderConnect = document.getElementById("senderConnect")
+
+        const join = () => {
+            console.log('connecting...')
+
+            const conn = peer.connect(senderInput.value, {
+                reliable: true
+            })
+
+            conn.on("open", () => {
+                console.log("connected to " + conn.peer)
+                document.getElementById("toPeer").innerText = conn.peer
+
+                conn.send("hello")
+            })
+
+            conn.on("data", data => {
+                console.log("received: " + data)
+            })
+
+            conn.on("close", () => {
+                console.log("connection closed")
+            })
+        }
+
+        const sendMessage = () => {
+            document.getElementById("messageInput")
+        }
+
+        senderConnect.addEventListener("click", join)
+        sender.addEventListener("click", sendMessage)
+    </script>
+</body>
+</html>

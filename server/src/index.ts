@@ -125,8 +125,10 @@ async function streamRoomUsers(env: Env, roomId: Room["id"]) {
 
 			roomUserStreams.set(roomId, roomUserStream)
 
-			controller.close = () => {
+			controller.close = async () => {
 				roomUserStreams.delete(roomId)
+				// TODO: remove users
+				await env.ROOMS.delete(roomId)
 			}
 		}
 	})

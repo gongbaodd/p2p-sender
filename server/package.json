@@ -17,6 +17,7 @@
 		"wrangler": "^4.3.0"
 	},
 	"dependencies": {
+		"@cloudflare/kv-asset-handler": "^0.4.0",
 		"arktype": "^2.1.10",
 		"itty-router": "^5.0.18"
 	}

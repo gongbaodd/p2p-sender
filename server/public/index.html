@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Peer test</title>
+</head>
+<body>
+	<h1>Hello World</h1>
+	<label>Sender id: <input type="text" id="senderId" disabled/></label>
+	<button id="createRoom">Create Room</button>
+	<label>Room id: <input type="text" id="roomId" disabled/></label>
+	<label>Room code: <input type="text" id="roomCode" /></label>
+	<script type="module">
+		import {Peer} from "https://esm.sh/peerjs@1.5.4?bundle-deps"
+
+		const peer = new Peer()
+
+		peer.on("open", async id => {
+			const data = await fetch(`/user/${id}`, {method: "POST"}).then(res => res.json())
+			document.getElementById("senderId").value = data.id
+		})
+
+		document.getElementById("createRoom").addEventListener("click", async () => {
+			const data = await fetch("/room", {method: "POST", body: JSON.stringify({user_id: document.getElementById("senderId").value})}).then(res => res.json())
+			document.getElementById("roomId").value = data.id
+			document.getElementById("roomCode").value = data.code
+		})
+	</script>
+</body>
+</html>

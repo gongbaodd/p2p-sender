@@ -1,49 +1,60 @@
 import { AutoRouter, cors, StatusError, withContent, json } from "itty-router"
 import { CreateRoomBody, createRoomBodySchema, Room, UpdateUserBody, updateUserBodySchema, User, userSchema } from "./models"
 import { type } from "arktype"
+import { getAssetFromKV } from "@cloudflare/kv-asset-handler"
 
 const { preflight, corsify } = cors()
-const router = AutoRouter({
+const frontEnd = AutoRouter({
 	before: [preflight],
 	finally: [corsify],
 })
+const backEnd = AutoRouter({})
 
 export default {
-	fetch(req: Request, env: Env, ctx: any) {
-		return router.fetch(req, env, ctx).then(json)
+	fetch(req: Request, env: Env, ctx: ExecutionContext) {
+		return frontEnd.fetch(req, env, ctx)
 	}
 }
 
-router
-	.post("/user/:id", ({id: userId}, env: Env, ctx) => {
-		validateUUID(userId)
-		return createUser(env, userId)
+frontEnd
+	.all("*", async (request, env, ctx) => {
+		try {
+			return await getAssetFromKV({ request, waitUntil(p) { return ctx.waitUntil(p) }})
+		} catch {
+			return await backEnd.fetch(request, env, ctx)
+		}
 	})
-	.patch("/user/:id", withContent, ({ id: userId, content, env }) => {
+
+backEnd
+	.post("/user/:id", async ({ id: userId }, env: Env, ctx) => {
+		validateUUID(userId)
+		return await createUser(env, userId)
+	})
+	.patch("/user/:id", withContent, async ({ id: userId, content, env }) => {
 		validateUUID(userId)
 		const out = updateUserBodySchema(content)
 		if (out instanceof type.errors) {
 			throw new StatusError(409, out.summary)
 		}
 
-		return updateUser(env, userId, content)
+		return await updateUser(env, userId, content)
 	})
-	.post("/room/", withContent, ({ content, env }) => {
+	.post("/room/", withContent, async ({ content, env }) => {
 		const out = createRoomBodySchema(content)
 		if (out instanceof type.errors) {
 			throw new StatusError(409, out.summary)
 		}
 
-		return createRoom(env, content)
+		return await createRoom(env, content)
 	})
-	.get("/room", ({ query, env }) => {
+	.get("/room", async ({ query, env }) => {
 		const code = query.code as string
 		const out = type("string == 6")(code)
 		if (out instanceof type.errors) {
 			throw new StatusError(409, out.summary)
 		}
 
-		return getRoomByCode(env, code)
+		return await getRoomByCode(env, code)
 	})
 	.get("/room/:id/user", ({ id: roomId, env }) => {
 		validateUUID(roomId)
@@ -103,10 +114,10 @@ async function createRoom(env: Env, content: CreateRoomBody) {
 async function getRoomByCode(env: Env, code: string) {
 	const keys = await env.ROOMS.list();
 	for (const key of keys.keys) {
-	  const room = await env.ROOMS.get(key.name, { type: 'json' }) as Room | null;
-	  if (room && room.code === code) {
-		return room
-	  }
+		const room = await env.ROOMS.get(key.name, { type: 'json' }) as Room | null;
+		if (room && room.code === code) {
+			return room
+		}
 	}
 
 	throw new StatusError(404, "Room not found")
@@ -119,7 +130,7 @@ async function streamRoomUsers(env: Env, roomId: Room["id"]) {
 		start(controller) {
 			const roomUserStream: RoomUserStream = {
 				enqueue(userId: User["id"]) {
-					controller.enqueue(`data: ${JSON.stringify({userId})}`)
+					controller.enqueue(`data: ${JSON.stringify({ userId })}`)
 				}
 			}
 

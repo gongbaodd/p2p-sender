@@ -9,6 +9,20 @@
 	"compatibility_date": "2025-03-20",
 	"observability": {
 		"enabled": true
+	},
+	"kv_namespaces": [
+		{
+			"binding": "ROOMS",
+			"id": "809316e194164674a9ff9f8c08cb828d"
+		},
+		{
+			"binding": "USERS",
+			"id": "d4bf63028d894b1b90742c8a3d565e15"
+		}
+	],
+	"assets": {
+		"directory": "./public",
+		"binding": "ASSETS"
 	}
 	/**
 	 * Smart Placement

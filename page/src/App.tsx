@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, FormEvent } from "react";
 import { DataConnection } from "peerjs";
 import { Share2, Send, Link } from "lucide-react";
 import { createPeerRef } from "./hooks/createPeerRef";
@@ -15,13 +15,17 @@ function App() {
 
   const isHost = userId === hostId;
 
-  const peerRef = createPeerRef({
+  const { peerRef, connectPeer } = createPeerRef({
     onOpen: async (id) => {
       await createUser(id);
       setUserId(id);
     },
     onConnection: (conn) => {
       setConns((prev) => [...prev, conn]);
+    },
+
+    onData: (_, data) => {
+      setReceivedUrl(data as string);
     },
   });
 
@@ -35,7 +39,9 @@ function App() {
     setHostId(userId);
   }, [userId]);
 
-  const handleJoinRoom = useCallback(async () => {
+  const handleJoinRoom = useCallback(async (event: FormEvent) => {
+    event.preventDefault()
+
     if (!peerRef.current) return;
     if (!roomCode) return;
 
@@ -45,15 +51,12 @@ function App() {
     setRoomId(room.id);
     setHostId(room.user_id);
 
-    const conn = peerRef.current.connect(room.user_id);
-    setConns((prev) => [...prev, conn]);
-
-    conn.on("data", (data) => {
-      setReceivedUrl(data as string);
-    });
+    connectPeer(room.user_id);
   }, [roomCode]);
 
-  const handleSendUrl = useCallback(() => {
+  const handleSendUrl = useCallback((event: FormEvent) => {
+    event.preventDefault()
+
     if (!url) return;
 
     for (const conn of conns) {
@@ -101,32 +104,31 @@ function App() {
                 </div>
               </div>
               {isHost && (
-                <div className="space-y-2">
+                <form className="space-y-2" name="sendUrl" onSubmit={handleSendUrl}>
                   <input
                     type="url"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="Enter URL to share..."
                     className="w-full p-2 border rounded-lg"
+                    name="url"
                   />
                   <button
-                    onClick={handleSendUrl}
+                    type="submit"
                     disabled={conns.length < 1 || !url}
                     className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send size={20} />
                     Send URL ({conns.length} connected)
                   </button>
-                </div>
+                </form>
               )}
             </div>
           )}
         </div>
 
         {/* Join Room Section */}
-        <div
-          className={`mt-8 space-y-4`}
-        >
+        <form className={`mt-8 space-y-4`} onSubmit={handleJoinRoom} name="joinRoom">
           {!roomId ? (
             <div className="space-y-2">
               <input
@@ -136,9 +138,10 @@ function App() {
                 placeholder="Enter 6-digit room code"
                 className="w-full p-2 border rounded-lg uppercase"
                 maxLength={6}
+                name="roomCode"
               />
               <button
-                onClick={handleJoinRoom}
+                type="submit"
                 disabled={roomCode.length !== 6}
                 className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -158,10 +161,9 @@ function App() {
                   <span className="truncate">{receivedUrl}</span>
                 </a>
               )}
-
             </div>
           )}
-        </div>
+        </form>
       </div>
     </div>
   );

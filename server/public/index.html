@@ -1,89 +1,14 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Peer test</title>
-</head>
-<body>
-	<h1>Hello World</h1>
-	<div>
-		<label>Sender id: <input type="text" id="senderId" disabled/></label>
-	</div>
-	<div>
-		<button id="createRoom">Create Room</button>
-		<label>Room id: <input type="text" id="roomId" disabled/></label>
-		<label>Room code: <input type="text" id="roomCode" disabled /></label>
-	</div>
-	<div>
-		<label>Room code:<input type="text" id="joinRoomCode" /></label>
-		<label>Room id:<input type="text" id="joinRoomId" disabled/></label>
-		<label>Room host:<input type="text" id="roomHost" disabled/></label>
-		<button id="joinRoom">join room</button>
-	</div>
-
-	<ul id="userJoined">
-
-	</ul>
-
-	<p id="content">
-
-	</p>
-
-	<script type="module">
-		import {Peer} from "https://esm.sh/peerjs@1.5.4?bundle-deps"
-
-		const peer = new Peer()
-		let userJoined
-
-		peer.on("open", async id => {
-			const data = await fetch(`/api/user/${id}`, {method: "POST"}).then(res => res.json())
-			document.getElementById("senderId").value = data.id
-		})
-
-		const joinedUser = document.getElementById("userJoined")
-		peer.on("connection", conn => {
-			const li = document.createElement("li")
-			li.innerText = conn.peer
-			joinedUser.appendChild(li)
-
-			setTimeout(() => {
-				conn.send("hi from sender!")
-
-			}, 1000)
-
-
-			conn.on('data', data => {
-				const p = document.getElementById("content")
-				p.innerText = data
-
-
-			})
-		})
-
-		document.getElementById("createRoom").addEventListener("click", async () => {
-			const data = await fetch("/api/room", {method: "POST", body: JSON.stringify({user_id: document.getElementById("senderId").value})}).then(res => res.json())
-			document.getElementById("roomId").value = data.id
-			document.getElementById("roomCode").value = data.code
-		})
-
-		document.getElementById("joinRoom").addEventListener("click", async () => {
-			const joinRoomInput = document.getElementById("joinRoomCode")
-			const roomData = await fetch("/api/room?code=" + joinRoomInput.value).then(res => res.json())
-			document.getElementById("joinRoomId").value = roomData.id
-			document.getElementById("roomHost").value = roomData.user_id
-
-			const conn = peer.connect(roomData.user_id)
-
-			conn.on("open", () => {
-				// conn.send("hi from receiver!");
-			})
-
-			conn.on("data", data => {
-				const p = document.getElementById("content")
-				p.innerText = data
-			})
-		})
-	</script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite + React + TS</title>
+    <script type="module" crossorigin src="/assets/index-Cl8nq6eQ.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-QAlY4Lzo.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>

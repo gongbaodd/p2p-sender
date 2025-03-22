@@ -132,9 +132,9 @@ function App() {
               <input
                 type="text"
                 value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value)}
+                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                 placeholder="Enter 6-digit room code"
-                className="w-full p-2 border rounded-lg"
+                className="w-full p-2 border rounded-lg uppercase"
                 maxLength={6}
               />
               <button

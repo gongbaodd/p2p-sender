@@ -39,30 +39,36 @@ function App() {
     setHostId(userId);
   }, [userId]);
 
-  const handleJoinRoom = useCallback(async (event: FormEvent) => {
-    event.preventDefault()
+  const handleJoinRoom = useCallback(
+    async (event: FormEvent) => {
+      event.preventDefault();
 
-    if (!peerRef.current) return;
-    if (!roomCode) return;
+      if (!peerRef.current) return;
+      if (!roomCode) return;
 
-    const room = await getRoom(roomCode);
-    if (!room) return;
+      const room = await getRoom(roomCode);
+      if (!room) return;
 
-    setRoomId(room.id);
-    setHostId(room.user_id);
+      setRoomId(room.id);
+      setHostId(room.user_id);
 
-    connectPeer(room.user_id);
-  }, [roomCode]);
+      connectPeer(room.user_id);
+    },
+    [roomCode]
+  );
 
-  const handleSendUrl = useCallback((event: FormEvent) => {
-    event.preventDefault()
+  const handleSendUrl = useCallback(
+    (event: FormEvent) => {
+      event.preventDefault();
 
-    if (!url) return;
+      if (!url) return;
 
-    for (const conn of conns) {
-      conn.send(url);
-    }
-  }, [conns, url]);
+      for (const conn of conns) {
+        conn.send(url);
+      }
+    },
+    [conns, url]
+  );
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -104,7 +110,11 @@ function App() {
                 </div>
               </div>
               {isHost && (
-                <form className="space-y-2" name="sendUrl" onSubmit={handleSendUrl}>
+                <form
+                  className="space-y-2"
+                  name="sendUrl"
+                  onSubmit={handleSendUrl}
+                >
                   <input
                     type="url"
                     value={url}
@@ -128,7 +138,11 @@ function App() {
         </div>
 
         {/* Join Room Section */}
-        <form className={`mt-8 space-y-4`} onSubmit={handleJoinRoom} name="joinRoom">
+        <form
+          className={`mt-8 space-y-4`}
+          onSubmit={handleJoinRoom}
+          name="joinRoom"
+        >
           {!roomId ? (
             <div className="space-y-2">
               <input

@@ -2,6 +2,7 @@ import { AutoRouter, cors, StatusError, withContent, json } from "itty-router"
 import { CreateRoomBody, createRoomBodySchema, Room, UpdateUserBody, updateUserBodySchema, User, userSchema } from "./models"
 import { type } from "arktype"
 import { getAssetFromKV } from "@cloudflare/kv-asset-handler"
+import { unknown } from "arktype/internal/keywords/ts.ts"
 
 const { preflight, corsify } = cors()
 const frontEnd = AutoRouter({
@@ -26,11 +27,14 @@ frontEnd
 	})
 
 backEnd
-	.post("/user/:id", async ({ id: userId }, env: Env, ctx) => {
+	.post("/user/:id", async ({ id: userId }, env: Env) => {
 		validateUUID(userId)
 		return await createUser(env, userId)
 	})
-	.patch("/user/:id", withContent, async ({ id: userId, content, env }) => {
+	.patch("/user/:id", withContent, async (...args) => {
+		const [{ id: userId, content }] = args
+		const env = Reflect.get(args, 1) as unknown as Env
+
 		validateUUID(userId)
 		const out = updateUserBodySchema(content)
 		if (out instanceof type.errors) {
@@ -39,15 +43,22 @@ backEnd
 
 		return await updateUser(env, userId, content)
 	})
-	.post("/room/", withContent, async ({ content, env }) => {
+	.post("/room/", withContent, async (...args) => {
+		const [{ content }] = args
+		const env = Reflect.get(args, 1) as unknown as Env
+
 		const out = createRoomBodySchema(content)
 		if (out instanceof type.errors) {
 			throw new StatusError(409, out.summary)
 		}
 
+
 		return await createRoom(env, content)
 	})
-	.get("/room", async ({ query, env }) => {
+	.get("/room", async (...args) => {
+		const [{ query }] = args
+		const env = Reflect.get(args, 1) as unknown as Env
+
 		const code = query.code as string
 		const out = type("string == 6")(code)
 		if (out instanceof type.errors) {
@@ -56,7 +67,10 @@ backEnd
 
 		return await getRoomByCode(env, code)
 	})
-	.get("/room/:id/user", ({ id: roomId, env }) => {
+	.get("/room/:id/user", (...args) => {
+		const [{ id: roomId }] = args
+		const env = Reflect.get(args, 1) as unknown as Env
+
 		validateUUID(roomId)
 		streamRoomUsers(env, roomId);
 	})

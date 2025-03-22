@@ -5,33 +5,39 @@ import { getAssetFromKV } from "@cloudflare/kv-asset-handler"
 import { unknown } from "arktype/internal/keywords/ts.ts"
 
 const { preflight, corsify } = cors()
-const frontEnd = AutoRouter({
+const pageRouter = AutoRouter({
 	before: [preflight],
 	finally: [corsify],
 })
-const backEnd = AutoRouter({})
+const apiRouter = AutoRouter({})
 
 export default {
 	fetch(req: Request, env: Env, ctx: ExecutionContext) {
-		return frontEnd.fetch(req, env, ctx)
+		return pageRouter.fetch(req, env, ctx)
 	}
 }
 
-frontEnd
+pageRouter
 	.all("*", async (request, env, ctx) => {
 		try {
-			return await getAssetFromKV({ request, waitUntil(p) { return ctx.waitUntil(p) }})
+			return await getAssetFromKV({ request, waitUntil(p) { return ctx.waitUntil(p) } })
 		} catch {
-			return await backEnd.fetch(request, env, ctx)
+			const url = new URL(request.url)
+			if (url.pathname.startsWith("/api/")) {
+				return apiRouter.fetch(request, env, ctx)
+			}
+
+			throw new StatusError(404, "Page not found")
 		}
 	})
 
-backEnd
-	.post("/user/:id", async ({ id: userId }, env: Env) => {
+
+apiRouter
+	.post("/api/user/:id", async ({ id: userId }, env: Env) => {
 		validateUUID(userId)
 		return await createUser(env, userId)
 	})
-	.patch("/user/:id", withContent, async (...args) => {
+	.patch("/api/user/:id", withContent, async (...args) => {
 		const [{ id: userId, content }] = args
 		const env = Reflect.get(args, 1) as unknown as Env
 
@@ -41,9 +47,10 @@ backEnd
 			throw new StatusError(409, out.summary)
 		}
 
-		return await updateUser(env, userId, content)
+		await updateUser(env, userId, content)
+		return
 	})
-	.post("/room/", withContent, async (...args) => {
+	.post("/api/room/", withContent, async (...args) => {
 		const [{ content }] = args
 		const env = Reflect.get(args, 1) as unknown as Env
 
@@ -55,7 +62,7 @@ backEnd
 
 		return await createRoom(env, content)
 	})
-	.get("/room", async (...args) => {
+	.get("/api/room", async (...args) => {
 		const [{ query }] = args
 		const env = Reflect.get(args, 1) as unknown as Env
 
@@ -67,13 +74,7 @@ backEnd
 
 		return await getRoomByCode(env, code)
 	})
-	.get("/room/:id/user", (...args) => {
-		const [{ id: roomId }] = args
-		const env = Reflect.get(args, 1) as unknown as Env
 
-		validateUUID(roomId)
-		streamRoomUsers(env, roomId);
-	})
 
 async function createUser(env: Env, userId: string) {
 	const user: User = {
@@ -99,15 +100,9 @@ async function updateUser(env: Env, userId: string, body: UpdateUserBody) {
 	}
 	await env.USERS.put(userId, JSON.stringify(user))
 
-	if (user.room_id) {
-		const roomUserStream = roomUserStreams.get(user.room_id)
-		if (roomUserStream) {
-			roomUserStream.enqueue(user.id)
-		}
-	}
-
 	return user
 }
+
 
 async function createRoom(env: Env, content: CreateRoomBody) {
 	const code = Math.random().toString(36).slice(-6).toUpperCase()
@@ -121,6 +116,7 @@ async function createRoom(env: Env, content: CreateRoomBody) {
 	}
 
 	await env.ROOMS.put(roomId, JSON.stringify(room));
+	await updateUser(env, content.user_id, { room_id: roomId })
 
 	return room
 }
@@ -135,30 +131,6 @@ async function getRoomByCode(env: Env, code: string) {
 	}
 
 	throw new StatusError(404, "Room not found")
-}
-
-type RoomUserStream = { enqueue: (userId: User["id"]) => void }
-const roomUserStreams: Map<Room["id"], RoomUserStream> = new Map();
-async function streamRoomUsers(env: Env, roomId: Room["id"]) {
-	const stream = new ReadableStream({
-		start(controller) {
-			const roomUserStream: RoomUserStream = {
-				enqueue(userId: User["id"]) {
-					controller.enqueue(`data: ${JSON.stringify({ userId })}`)
-				}
-			}
-
-			roomUserStreams.set(roomId, roomUserStream)
-
-			controller.close = async () => {
-				roomUserStreams.delete(roomId)
-				// TODO: remove users
-				await env.ROOMS.delete(roomId)
-			}
-		}
-	})
-
-	return stream
 }
 
 function validateUUID(id: string) {

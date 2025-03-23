@@ -49,9 +49,11 @@ function App() {
       event.preventDefault();
 
       if (!peerRef.current) return;
-      if (!roomCode) return;
 
-      const room = await getRoom(roomCode);
+      const formData = new FormData(event.target as HTMLFormElement);
+      const code = formData.get("roomCode") as string;
+
+      const room = await getRoom(code);
       if (!room) return;
 
       setRoomId(room.id);
@@ -59,7 +61,7 @@ function App() {
 
       connectPeer(room.user_id);
     },
-    [roomCode]
+    []
   );
 
   const handleSendUrl = useCallback(
@@ -152,12 +154,11 @@ function App() {
             <div className="space-y-2">
               <input
                 type="text"
-                value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                 placeholder="Enter 6-digit room code"
                 className="w-full p-2 border rounded-lg uppercase"
                 maxLength={6}
                 name="roomCode"
+                onChange={e => setRoomCode(e.target.value)}
               />
               <button
                 type="submit"

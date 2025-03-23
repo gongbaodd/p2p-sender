@@ -12,6 +12,7 @@ function App() {
   const [url, setUrl] = useState("");
   const [conns, setConns] = useState<DataConnection[]>([]);
   const [receivedUrl, setReceivedUrl] = useState("");
+  const [errmsg, setErrmsg] = useState("");
 
   const isHost = userId === hostId;
 
@@ -27,6 +28,10 @@ function App() {
     onData: (_, data) => {
       setReceivedUrl(data as string);
     },
+
+    onError(err) {
+      setErrmsg(JSON.stringify(err));
+    }
   });
 
   const handleCreateRoom = useCallback(async () => {
@@ -178,6 +183,13 @@ function App() {
             </div>
           )}
         </form>
+        {errmsg && (
+          <div className="mt-8 space-y-4">
+            <p className="flex items-center gap-2 p-3 bg-gray-100 rounded-lg">
+              {errmsg}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

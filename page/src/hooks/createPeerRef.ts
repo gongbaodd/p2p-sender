@@ -1,10 +1,11 @@
-import Peer, { DataConnection } from "peerjs";
+import Peer, { DataConnection, PeerError } from "peerjs";
 import { useCallback, useEffect, useRef } from "react";
 
 interface PeerOptions {
   onOpen: (id: string) => void,
   onConnection: (conn: DataConnection) => void,
-  onData: (conn: DataConnection, data: string) => void
+  onData: (conn: DataConnection, data: string) => void,
+  onError: (err: PeerError<string>) => void
 }
 
 const PILOT = "pilot"
@@ -28,12 +29,16 @@ export function createPeerRef(opt: PeerOptions) {
         opt.onData(conn, data as string)
       })
 
+      conn.on("error", opt.onError)
+
       setTimeout(() => {
         conn.send(PILOT)
         debug("Sender: sending pilot")
       }, 50)
 
     })
+
+    peer.on('error', opt.onError)
   }, [])
 
   const connectPeer = useCallback((targetId: string) => {
@@ -54,6 +59,8 @@ export function createPeerRef(opt: PeerOptions) {
 
       opt.onData(conn, data as string)
     })
+
+    conn.on("error", opt.onError)
   }, [])
 
   return { peerRef, connectPeer }
